@@ -48,7 +48,7 @@ const verifyToken = async (req, res, next) => {
         const { payload } = await jwtVerify(token, createRemoteJWKSet(
             new URL('http://localhost:3000/api/auth/jwks')
         ))
-        req.user = payload;
+        req?.user = payload;
         next();
     } catch (error) {
         console.error('Token validation failed:', error)
@@ -87,17 +87,15 @@ app.get('/books/mine', verifyToken, async (req, res) => {
 
 app.post('/books', verifyToken, async (req, res) => {
     const book = req.body;
-    const userEmail = req.user.email;
+    const userEmail = req?.user?.email;
     book.userEmail = userEmail;
 
     const alreadyAdded = await booksCollection.findOne({
-        "addedBy.email": userEmail,
+        addedBy: { email: userEmail },
         "title": book.title
     });
 
-    if (alreadyAdded) {
-        return res.status(400).send({ message: "You have already added this book." });
-    }
+    if (alreadyAdded) return res.status(400).send({ message: "You have already added this book." });
 
     const result = await booksCollection.insertOne(book);
     res.send(result);
@@ -105,7 +103,7 @@ app.post('/books', verifyToken, async (req, res) => {
 
 app.post('/borrows', verifyToken, async (req, res) => {
     const borrow = req.body;
-    const userEmail = req.user.email;
+    const userEmail = req?.user?.email;
     borrow.userEmail = userEmail;
 
     const alreadyBorrowed = await borrowCollection.findOne({
@@ -113,9 +111,7 @@ app.post('/borrows', verifyToken, async (req, res) => {
         "bookId": borrow.bookId
     });
 
-    if (alreadyBorrowed) {
-        return res.status(400).send({ message: "You have already borrowed this book." });
-    }
+    if (alreadyBorrowed) return res.status(400).send({ message: "You have already borrowed this book." });
 
     const returnd = await booksCollection.updateOne(
         { _id: new ObjectId(id) }, { $inc: { availableCopies: -1 } }
@@ -146,10 +142,8 @@ app.patch('/books/:id', verifyToken, async (req, res) => {
         { _id: new ObjectId(id), addedBy: { email: req.user.email } },
         { $set: { title, author, category } }
     );
-    console.log('result from book patch ', result);
-    if (result.matchedCount === 0) {
-        return res.status(404).send({ message: "Book not found or not owned by user" });
-    }
+
+    if (result.matchedCount === 0) return res.status(404).send({ message: "Book not found or not owned by user" });
 
     res.send(result);
 });
@@ -162,9 +156,7 @@ app.delete('/books/:id', verifyToken, async (req, res) => {
 
     const result = await booksCollection.deleteOne({ _id: new ObjectId(id), addedBy: { email: req.user.email } });
 
-    if (result.deletedCount === 0) {
-        return res.status(404).send({ message: "Book not found, or you are not its owner" })
-    }
+    if (result.deletedCount === 0) return res.status(404).send({ message: "Book not found, or you are not its owner" })
 
     res.send(result);
 });
@@ -177,9 +169,8 @@ app.delete('/borrows/:id', verifyToken, async (req, res) => {
 
     const result = await borrowCollection.deleteOne({ _id: new ObjectId(id) });
 
-    if (result.deletedCount === 0) {
-        return res.status(404).send({ message: "Book not found, or you are not its owner" })
-    }
+    if (result.deletedCount === 0) return res.status(404).send({ message: "Book not found, or you are not its owner" })
+
     res.send(result);
 });
 
@@ -195,9 +186,7 @@ app.delete('/return/:id', verifyToken, async (req, res) => {
         { _id: new ObjectId(id) }, { $inc: { availableCopies: 1 } }
     );
 
-    if (result.deletedCount === 0) {
-        return res.status(404).send({ message: "Return not found" })
-    }
+    if (result.deletedCount === 0) return res.status(404).send({ message: "Return not found" })
     res.send(result);
 });
 
