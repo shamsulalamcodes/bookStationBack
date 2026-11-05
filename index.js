@@ -113,6 +113,10 @@ app.post('/borrows', verifyToken, async (req, res) => {
         return res.status(400).send({ message: "You have already borrowed this book." });
     }
 
+    const returnd = await booksCollection.updateOne(
+        { _id: new ObjectId(id) }, { $inc: { availableCopies: -1 } }
+    );
+
     const result = await borrowCollection.insertOne(borrow);
     res.send(result);
 });
@@ -183,6 +187,9 @@ app.delete('/return/:id', verifyToken, async (req, res) => {
     }
 
     const result = await borrowCollection.deleteOne({ _id: new ObjectId(id), userEmail: email });
+    const returnd = await booksCollection.updateOne(
+        { _id: new ObjectId(id) }, { $inc: { availableCopies: 1 } }
+    );
 
     if (result.deletedCount === 0) {
         return res.status(404).send({ message: "Return not found" })
