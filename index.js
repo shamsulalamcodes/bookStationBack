@@ -9,8 +9,12 @@ const port = process.env.PORT || 5000;
 const app = express()
 
 // Adds headers: Access-Control-Allow-Origin: *
-app.use(cors())
 app.use(express.json())
+
+app.use(cors({
+    origin: ['https://bookstationed.vercel.app', 'http://localhost:3000'],
+    credentials: true
+}));
 
 
 const client = new MongoClient(process.env.MONGODB_URI);
