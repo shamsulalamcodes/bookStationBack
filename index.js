@@ -153,6 +153,11 @@ app.delete('/books/:id', verifyToken, async (req, res) => {
     }
 
     const result = await booksCollection.deleteOne({ _id: new ObjectId(id), addedBy: { email: req.user.email } });
+
+    if (result.deletedCount === 0) {
+        return res.status(404).send({ message: "Book not found, or you are not its owner" })
+    }
+
     res.send(result);
 });
 
@@ -163,6 +168,25 @@ app.delete('/borrows/:id', verifyToken, async (req, res) => {
     }
 
     const result = await borrowCollection.deleteOne({ _id: new ObjectId(id) });
+
+    if (result.deletedCount === 0) {
+        return res.status(404).send({ message: "Book not found, or you are not its owner" })
+    }
+    res.send(result);
+});
+
+app.delete('/return/:id', verifyToken, async (req, res) => {
+    const { id } = req.params;
+    const email = req.user.email;
+    if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ message: "Invalid return id" })
+    }
+
+    const result = await borrowCollection.deleteOne({ _id: new ObjectId(id), userEmail: email });
+
+    if (result.deletedCount === 0) {
+        return res.status(404).send({ message: "Return not found" })
+    }
     res.send(result);
 });
 
