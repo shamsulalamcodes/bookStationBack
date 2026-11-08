@@ -60,7 +60,7 @@ app.get('/books', async (req, res) => {
 
 // Newest 6 books (sorted by createdAt, newest first)
 app.get('/books/latest', async (req, res) => {
-    const books = await booksCollection.find().sort({ createdAt: -1 }).limit(6).toArray();
+    const books = await booksCollection.find().sort({ createdAt: -1 }).limit(8).toArray();
     res.send(books);
 });
 
