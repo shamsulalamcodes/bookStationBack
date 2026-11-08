@@ -11,11 +11,7 @@ const app = express()
 // Adds headers: Access-Control-Allow-Origin: *
 app.use(express.json())
 
-app.use(cors({
-    origin: ['https://bookstationed.vercel.app', 'http://localhost:3000', 'http://127.0.0.1:3000'],
-    credentials: true
-}));
-
+app.use(cors());
 
 const client = new MongoClient(process.env.MONGODB_URI);
 
@@ -41,9 +37,7 @@ const borrowCollection = db.collection('borrows')
 // Created ONCE so the signing keys are cached.
 // AUTH_URL = where the Next.js app (BetterAuth) runs: http://localhost:3000 locally,
 // your deployed frontend URL on Vercel.
-const JWKS = createRemoteJWKSet(
-    new URL(`${process.env.AUTH_URL || 'http://localhost:3000'}/api/auth/jwks`)
-)
+const JWKS = createRemoteJWKSet(new URL(`${process.env.AUTH_URL}/api/auth/jwks`))
 
 const verifyToken = async (req, res, next) => {
     const [, token] = (req.headers.authorization || '').split(' ');
