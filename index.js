@@ -128,18 +128,46 @@ app.get('/books/:id', async (req, res) => {
 
 app.patch('/books/:id', verifyToken, async (req, res) => {
     const { id } = req.params;
-    const { title, author, category } = req.body;
+    const pody = req.body;
 
-    if (!ObjectId.isValid(id)) {
-        return res.status(400).send({ message: "Invalid book id" });
+    if (!ObjectId.isValid(id)) { return res.status(400).send({ message: "Invalid book id" }); }
+    const book = await booksCollection.findOne({
+        _id: new ObjectId(id),
+        "addedBy.email": req.user.email,
+    })
+    if (!book) { return res.status(404).send({ message: "Book not found or not owned by you" }) }
+
+    const { title, author, category, description, image, totalCopies } = req.body
+    const changes = {}
+    if (title !== undefined) changes.title = title
+    if (author !== undefined) changes.author = author
+    if (category !== undefined) changes.category = category
+    if (description !== undefined) changes.description = description
+    if (image !== undefined) changes.image = image
+
+    if (totalCopies !== undefined) {
+        const total = Number(totalCopies)
+        if (!Number.isInteger(total) || total < 1) {
+            return res.status(400).send({ message: "Total copies must be a whole number of 1 or more" })
+        }
+        const copiesOut = book.totalCopies - book.availableCopies // currently borrowed
+        if (total < copiesOut) {
+            return res.status(400).send({
+                message: `${copiesOut} copies are currently borrowed, so total cannot be below ${copiesOut}`,
+            })
+        }
+        changes.totalCopies = total
+        changes.availableCopies = total - copiesOut
     }
 
     const result = await booksCollection.updateOne(
-        { _id: new ObjectId(id), addedBy: { email: req.user.email } },
-        { $set: { title, author, category } }
-    );
+        { _id: book._id, availableCopies: book.availableCopies },
+        { $set: changes }
+    )
 
-    if (result.modifiedCount === 0) return res.status(404).send({ message: "Book not found or not owned by user" });
+    if (result.matchedCount === 0) {
+        return res.status(409).send({ message: "The book just changed. Please try again." })
+    }
 
     res.send(result);
 });
@@ -167,22 +195,6 @@ app.delete('/borrows/:id', verifyToken, async (req, res) => {
 
     if (result.deletedCount === 0) return res.status(404).send({ message: "Book not found, or you are not its owner" })
 
-    res.send(result);
-});
-
-app.delete('/return/:id', verifyToken, async (req, res) => {
-    const { id } = req.params;
-    const email = req.user.email;
-    if (!ObjectId.isValid(id)) {
-        return res.status(400).send({ message: "Invalid return id" })
-    }
-
-    const result = await borrowCollection.deleteOne({ _id: new ObjectId(id), userEmail: email });
-    const returnd = await booksCollection.updateOne(
-        { _id: new ObjectId(id) }, { $inc: { availableCopies: 1 } }
-    );
-
-    if (result.deletedCount === 0) return res.status(404).send({ message: "Return not found" })
     res.send(result);
 });
 
